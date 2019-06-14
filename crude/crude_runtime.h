@@ -9,16 +9,19 @@
 
 namespace crude {
 
+using Object = v8::Global<v8::Object>;
 using Value  = v8::Global<v8::Value>;
 using Values = std::vector<Value>;
 using Script = v8::Global<v8::UnboundScript>;
 
 class Context;
+class Wrapper;
 
 class Runtime
 {
     std::unique_ptr<v8::Platform>  d_platform;
     v8::Isolate                   *d_isolate_p;
+    v8::Global<v8::Symbol>         d_wrapKey;
 
   public:
     using Signature = std::function<Value (const Runtime& runtime,
@@ -41,6 +44,8 @@ class Runtime
     int host(Object           *result,
              const Context&    context,
              const Signature&  function);
+    Object wrap(const Context& context, std::unique_ptr<Wrapper>&& wrapper);
+    Wrapper *unwrap(const Object& object) const;
 
     v8::Isolate *isolate() const;
 };

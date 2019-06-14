@@ -3,6 +3,7 @@ add_library(
     crude_context.cpp
     crude_runtime.cpp
     crude_valueutil.cpp
+    crude_wrapper.cpp
 )
 
 target_compile_features(

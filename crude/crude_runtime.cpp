@@ -2,6 +2,7 @@
 #include <crude_runtime.h>
 
 #include <crude_context.h>
+#include <crude_wrapper.h>
 
 #include <libplatform/libplatform.h>
 #include <v8.h>
@@ -57,10 +58,15 @@ Runtime::Runtime()
     createParams.array_buffer_allocator =
                              v8::ArrayBuffer::Allocator::NewDefaultAllocator();
     d_isolate_p = v8::Isolate::New(createParams);
+
+    v8::HandleScope handles(d_isolate_p);
+    d_wrapKey = v8::Global<v8::Symbol>(d_isolate_p,
+                                       v8::Symbol::New(d_isolate_p));
 }
 
 Runtime::~Runtime()
 {
+    d_wrapKey.Reset();
     d_isolate_p->Dispose();
     v8::V8::Dispose();
     v8::V8::ShutdownPlatform();
@@ -153,6 +159,53 @@ int Runtime::host(Object           *result,
                     },
                     v8::WeakCallbackType::kParameter);
     return 0;
+}
+
+Object Runtime::wrap(const crude::Context&      context,
+                     std::unique_ptr<Wrapper>&& wrapper)
+{
+    v8::HandleScope handles(d_isolate_p);
+
+    context.local()->Enter();
+    auto object = v8::Object::New(d_isolate_p);
+    auto result = Object(d_isolate_p, object);
+    context.local()->Exit();
+    wrapper->hosted(result);
+
+    auto *rawWrapper = wrapper.release();
+    result.SetWeak(rawWrapper,
+                   [] (auto info) {
+                       delete info.GetParameter();
+                   },
+                   v8::WeakCallbackType::kParameter);
+
+    context.local()->Enter();
+    object->Set(object->CreationContext(),
+                d_wrapKey.Get(d_isolate_p),
+                v8::External::New(d_isolate_p, rawWrapper)).Check();
+    context.local()->Exit();
+    return result;
+}
+
+Wrapper *Runtime::unwrap(const Object& object) const
+{
+    auto localObject = object.Get(d_isolate_p);
+    auto key         = d_wrapKey.Get(d_isolate_p);
+
+    auto isWrapped = localObject->Has(localObject->CreationContext(), key)
+                     .FromMaybe(false);
+
+    if (!isWrapped) {
+        return nullptr;
+    }
+
+    auto wrapper = localObject->Get(localObject->CreationContext(), key)
+                                .ToLocalChecked();
+    if (!wrapper->IsExternal()) {
+        std::abort();
+    }
+    auto external = v8::External::Cast(*wrapper);
+    return static_cast<Wrapper *>(external->Value());
 }
 
 v8::Isolate *Runtime::isolate() const
