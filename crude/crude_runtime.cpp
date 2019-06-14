@@ -1,6 +1,8 @@
 // crude_runtime.cpp
 #include <crude_runtime.h>
 
+#include <crude_context.h>
+
 #include <libplatform/libplatform.h>
 #include <v8.h>
 
@@ -61,10 +63,10 @@ int Runtime::compile(Script                  *result,
     auto source = v8::ScriptCompiler::Source(textString.ToLocalChecked(),
                                              origin);
 
-    context.Get(d_isolate_p)->Enter();
+    context.local()->Enter();
     auto maybeScript = v8::ScriptCompiler::CompileUnboundScript(d_isolate_p,
                                                                 &source);
-    context.Get(d_isolate_p)->Exit();
+    context.local()->Exit();
 
     if (maybeScript.IsEmpty()) {
         return -1;
@@ -78,10 +80,10 @@ int Runtime::evaluate(Value          *result,
                       const Script&   script)
 {
     v8::HandleScope handles(d_isolate_p);
-    context.Get(d_isolate_p)->Enter();
+    context.local()->Enter();
     auto local = script.Get(d_isolate_p)->BindToCurrentContext();
-    auto maybeResult = local->Run(context.Get(d_isolate_p));
-    context.Get(d_isolate_p)->Exit();
+    auto maybeResult = local->Run(context.local());
+    context.local()->Exit();
 
     if (maybeResult.IsEmpty()) {
         return -1;

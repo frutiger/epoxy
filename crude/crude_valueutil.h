@@ -11,9 +11,9 @@ namespace v8 { class Value;                     }
 
 namespace crude {
 
-using Context = v8::Global<v8::Context>;
-using Value   = v8::Global<v8::Value>;
+using Value = v8::Global<v8::Value>;
 
+class Context;
 class Runtime;
 
 struct ValueUtil {

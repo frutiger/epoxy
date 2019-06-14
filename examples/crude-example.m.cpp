@@ -1,5 +1,6 @@
 // crude-example.m.cpp
 
+#include <crude_context.h>
 #include <crude_runtime.h>
 #include <crude_valueutil.h>
 

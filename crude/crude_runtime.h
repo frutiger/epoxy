@@ -9,11 +9,10 @@
 
 namespace crude {
 
-using Value   = v8::Global<v8::Value>;
-using Values  = std::vector<Value>;
-using Object  = v8::Global<v8::Object>;
-using Context = v8::Global<v8::Context>;
-using Script  = v8::Global<v8::UnboundScript>;
+using Value  = v8::Global<v8::Value>;
+using Script = v8::Global<v8::UnboundScript>;
+
+class Context;
 
 class Runtime
 {

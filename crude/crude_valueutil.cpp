@@ -1,6 +1,7 @@
 // crude_valueutil.cpp
 #include <crude_valueutil.h>
 
+#include <crude_context.h>
 #include <crude_runtime.h>
 
 #include <v8.h>
@@ -113,7 +114,7 @@ std::ostream& ValueUtil::print(std::ostream&  stream,
     v8::HandleScope handles(isolate);
     return print(stream,
                  isolate,
-                 context.Get(isolate),
+                 context.local(),
                  value.Get(isolate),
                  indentation);
 }
