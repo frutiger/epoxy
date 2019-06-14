@@ -8,6 +8,45 @@
 
 namespace crude {
 
+namespace {
+
+struct FunctionData {
+    const Runtime      *d_runtime_p;
+    Runtime::Signature  d_function;
+};
+
+}
+
+void Runtime::callback(const v8::FunctionCallbackInfo<v8::Value>& info)
+{
+    auto *isolate = info.GetIsolate();
+    v8::HandleScope handles(isolate);
+
+    if (!info.Data()->IsExternal()) {
+        std::abort();
+    }
+    auto  dataExternal = v8::External::Cast(*info.Data());
+    auto *data         = static_cast<FunctionData *>(dataExternal->Value());
+
+    auto *runtime = data->d_runtime_p;
+    if (runtime->isolate() != isolate) {
+        std::abort();
+    }
+
+    Values arguments;
+    for (int i = 0; i < info.Length(); ++i) {
+        arguments.push_back(Value(isolate, info[i]));
+    }
+
+    Object receiver(isolate, info.This());
+    Value  target(isolate, info.NewTarget());
+
+    info.GetReturnValue().Set(data->d_function(*runtime,
+                                               receiver,
+                                               target,
+                                               arguments));
+}
+
 Runtime::Runtime()
 {
     d_platform = v8::platform::NewDefaultPlatform();
@@ -89,6 +128,30 @@ int Runtime::evaluate(Value          *result,
         return -1;
     }
     *result = Value(d_isolate_p, maybeResult.ToLocalChecked());
+    return 0;
+}
+
+int Runtime::host(Object           *result,
+                  const Context&    context,
+                  const Signature&  function)
+{
+    v8::HandleScope handles(d_isolate_p);
+
+    auto *functionData = new FunctionData { this, function };
+    auto data = v8::External::New(d_isolate_p, functionData);
+    auto v8Function = v8::Function::New(context.local(),
+                                        &Runtime::callback,
+                                        data);
+    if (v8Function.IsEmpty()) {
+        return -1;
+    }
+
+    *result = Object(d_isolate_p, v8Function.ToLocalChecked());
+    result->SetWeak(functionData,
+                    [] (auto info) {
+                        delete info.GetParameter();
+                    },
+                    v8::WeakCallbackType::kParameter);
     return 0;
 }
 
