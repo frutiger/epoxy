@@ -9,6 +9,8 @@
 #include <libplatform/libplatform.h>
 #include <v8.h>
 
+#include <sstream>
+
 namespace crude {
 
 namespace {
@@ -32,30 +34,30 @@ void Runtime::callback(const v8::FunctionCallbackInfo<v8::Value>& info)
     auto *runtime = data->d_runtime_p;
     CRUDE_ASSERT(runtime->isolate() == isolate);
 
+    auto context = isolate->GetCurrentContext();
     Values arguments;
     for (int i = 0; i < info.Length(); ++i) {
         arguments.push_back(Value(isolate, info[i]));
     }
 
-    Context context(isolate, isolate->GetCurrentContext());
-    Object  receiver(isolate, info.This());
-    Value   target(isolate, info.NewTarget());
-
-    crude::Value result;
-    if (data->d_function(&result,
+    std::ostringstream errorStream;
+    crude::Value       result;
+    if (data->d_function(errorStream,
+                         &result,
                          *runtime,
-                         context,
-                         receiver,
-                         target,
+                         Context(isolate, context),
+                         Object(isolate, info.This()),     // receiver
+                         Value(isolate, info.NewTarget()), // target
                          arguments)) {
         Value error;
-        if (Convert::from(&error,
-                          *runtime,
-                          Context(isolate, isolate->GetCurrentContext()),
-                          "Type Error: failed to invoke function")) {
-            return;
-        }
-        isolate->ThrowException(error.Get(isolate));
+        Convert::from(errorStream,
+                      &error,
+                      *runtime,
+                      Context(isolate, context),
+                      errorStream.str());
+        v8::Isolate::Scope scope(isolate);
+        auto string = error.Get(isolate)->ToString(context).ToLocalChecked();
+        isolate->ThrowException(v8::Exception::Error(string));
     }
     info.GetReturnValue().Set(result);
 }
@@ -91,7 +93,8 @@ Context Runtime::createContext()
     return Context(d_isolate_p, context);
 }
 
-int Runtime::compile(Script                  *result,
+int Runtime::compile(std::ostream&            errorStream,
+                     Script                  *result,
                      const Context&           context,
                      const std::string_view&  name,
                      const std::string_view&  text)
@@ -99,12 +102,12 @@ int Runtime::compile(Script                  *result,
     v8::HandleScope handles(d_isolate_p);
 
     Value nameValue;
-    if (Convert::from(&nameValue, *this, context, name)) {
+    if (Convert::from(errorStream, &nameValue, *this, context, name)) {
         return -1;
     }
 
     Value textValue;
-    if (Convert::from(&textValue, *this, context, text)) {
+    if (Convert::from(errorStream, &textValue, *this, context, text)) {
         return -1;
     }
 
@@ -118,8 +121,20 @@ int Runtime::compile(Script                  *result,
     v8::MaybeLocal<v8::UnboundScript> maybeScript;
     {
         v8::Context::Scope scope(context.local());
+        v8::TryCatch       handler(d_isolate_p);
         maybeScript = v8::ScriptCompiler::CompileUnboundScript(d_isolate_p,
                                                                &source);
+        if (handler.HasCaught()) {
+            Value message(d_isolate_p, handler.Message()->Get());
+            std::string error;
+            CRUDE_ASSERT(0 == Convert::to(errorStream,
+                                          &error,
+                                          *this,
+                                          context,
+                                          message));
+            errorStream << error << '\n';
+            return -1;
+        }
     }
 
     if (maybeScript.IsEmpty()) {
@@ -129,7 +144,8 @@ int Runtime::compile(Script                  *result,
     return 0;
 }
 
-int Runtime::evaluate(Value          *result,
+int Runtime::evaluate(std::ostream&   errorStream,
+                      Value          *result,
                       const Context&  context,
                       const Script&   script)
 {
@@ -138,8 +154,21 @@ int Runtime::evaluate(Value          *result,
     v8::MaybeLocal<v8::Value> maybeResult;
     {
         v8::Context::Scope scope(context.local());
-        auto local  = script.Get(d_isolate_p)->BindToCurrentContext();
+        auto local = script.Get(d_isolate_p)->BindToCurrentContext();
+
+        v8::TryCatch handler(d_isolate_p);
         maybeResult = local->Run(context.local());
+        if (handler.HasCaught()) {
+            Value message(d_isolate_p, handler.Message()->Get());
+            std::string error;
+            CRUDE_ASSERT(0 == Convert::to(errorStream,
+                                          &error,
+                                          *this,
+                                          context,
+                                          message));
+            errorStream << error << '\n';
+            return -1;
+        }
     }
 
     if (maybeResult.IsEmpty()) {

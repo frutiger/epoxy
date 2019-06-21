@@ -2,10 +2,12 @@
 #include <crude_convert.h>
 
 #include <crude_context.h>
+#include <ostream>
 
 namespace crude {
 
-int Convert::to(int              *destination,
+int Convert::to(std::ostream&     errorStream,
+                int              *destination,
                 const Exchanger&  exchanger,
                 const Context&    context,
                 const Value&      source)
@@ -19,6 +21,7 @@ int Convert::to(int              *destination,
         maybeNumber = source.Get(isolate)->ToInteger(context.local());
     }
     if (maybeNumber.IsEmpty()) {
+        errorStream << "Type Error: expected int";
         return -1;
     }
 
@@ -26,7 +29,8 @@ int Convert::to(int              *destination,
     return 0;
 }
 
-int Convert::to(std::string      *destination,
+int Convert::to(std::ostream&     errorStream,
+                std::string      *destination,
                 const Exchanger&  exchanger,
                 const Context&    context,
                 const Value&      source)
@@ -40,6 +44,7 @@ int Convert::to(std::string      *destination,
         maybeString = source.Get(isolate)->ToString(context.local());
     }
     if (maybeString.IsEmpty()) {
+        errorStream << "Type Error: expected string";
         return -1;
     }
 
@@ -49,7 +54,8 @@ int Convert::to(std::string      *destination,
     return 0;
 }
 
-int Convert::from(Value            *destination,
+int Convert::from(std::ostream&,
+                  Value            *destination,
                   const Exchanger&  exchanger,
                   const Context&    context,
                   int               source)
@@ -64,7 +70,8 @@ int Convert::from(Value            *destination,
     return 0;
 }
 
-int Convert::from(Value                   *destination,
+int Convert::from(std::ostream&            errorStream,
+                  Value                   *destination,
                   const Exchanger&         exchanger,
                   const Context&           context,
                   const std::string_view&  source)
@@ -79,6 +86,7 @@ int Convert::from(Value                   *destination,
                                                    v8::NewStringType::kNormal,
                                                    source.length());
         if (maybeString.IsEmpty()) {
+            errorStream << "Type Error: expected UTF8 string";
             return -1;
         }
 

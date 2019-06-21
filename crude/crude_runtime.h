@@ -7,6 +7,7 @@
 #include <v8.h>
 
 #include <functional>
+#include <iosfwd>
 #include <string>
 #include <vector>
 
@@ -27,7 +28,8 @@ class Runtime : public Exchanger
     v8::Global<v8::Symbol>         d_wrapKey;
 
   public:
-    using Signature = std::function<int (Value          *result,
+    using Signature = std::function<int (std::ostream&   errorStream,
+                                         Value          *result,
                                          const Runtime&  runtime,
                                          const Context&  context,
                                          const Object&   receiver,
@@ -40,11 +42,15 @@ class Runtime : public Exchanger
     ~Runtime();
 
     Context createContext();
-    int compile(Script                  *result,
+    int compile(std::ostream&            errorStream,
+                Script                  *result,
                 const Context&           context,
                 const std::string_view&  name,
                 const std::string_view&  text);
-    int evaluate(Value *result, const Context& context, const Script& script);
+    int evaluate(std::ostream&   errorStream,
+                 Value          *result,
+                 const Context&  context,
+                 const Script&   script);
 
     int host(Object           *result,
              const Context&    context,

@@ -9,7 +9,8 @@
 #include <iostream>
 #include <sstream>
 
-static int addF(crude::Value          *result,
+static int addF(std::ostream&          errorStream,
+                crude::Value          *result,
                 const crude::Runtime&  runtime,
                 const crude::Context&  context,
                 const crude::Object&,
@@ -20,16 +21,16 @@ static int addF(crude::Value          *result,
     v8::HandleScope handles(isolate);
 
     int a;
-    if (crude::Convert::to(&a, runtime, context, arguments[0])) {
+    if (crude::Convert::to(errorStream, &a, runtime, context, arguments[0])) {
         return -1;
     }
 
     int b;
-    if (crude::Convert::to(&b, runtime, context, arguments[1])) {
+    if (crude::Convert::to(errorStream, &b, runtime, context, arguments[1])) {
         return -1;
     }
 
-    if (crude::Convert::from(result, runtime, context, a + b)) {
+    if (crude::Convert::from(errorStream, result, runtime, context, a + b)) {
         return -1;
     }
     return 0;
@@ -39,7 +40,8 @@ class Counter : public crude::Wrapper {
     int d_value = 0;
 
   public:
-    static int increment(crude::Value          *result,
+    static int increment(std::ostream&          errorStream,
+                         crude::Value          *result,
                          const crude::Runtime&  runtime,
                          const crude::Context&  context,
                          const crude::Object&   receiver,
@@ -50,12 +52,20 @@ class Counter : public crude::Wrapper {
         v8::HandleScope handles(isolate);
 
         int x;
-        if (crude::Convert::to(&x, runtime, context, arguments[0])) {
+        if (crude::Convert::to(errorStream,
+                               &x,
+                               runtime,
+                               context,
+                               arguments[0])) {
             return -1;
         }
 
         Counter *self = nullptr;
-        if (crude::Convert::to(&self, runtime, context, receiver)) {
+        if (crude::Convert::to(errorStream,
+                               &self,
+                               runtime,
+                               context,
+                               receiver)) {
             return -1;
         }
 
@@ -65,7 +75,8 @@ class Counter : public crude::Wrapper {
         return 0;
     }
 
-    static int get(crude::Value          *result,
+    static int get(std::ostream&          errorStream,
+                   crude::Value          *result,
                    const crude::Runtime&  runtime,
                    const crude::Context&  context,
                    const crude::Object&   receiver,
@@ -76,7 +87,11 @@ class Counter : public crude::Wrapper {
         v8::HandleScope handles(isolate);
 
         Counter *self = nullptr;
-        if (crude::Convert::to(&self, runtime, context, receiver)) {
+        if (crude::Convert::to(errorStream,
+                               &self,
+                               runtime,
+                               context,
+                               receiver)) {
             return -1;
         }
 
@@ -112,7 +127,8 @@ int main()
     context.set("counter", counter);
 
     crude::Script script;
-    if (runtime.compile(&script,
+    if (runtime.compile(std::cerr,
+                        &script,
                         context,
                         "<example>",
                         "Counter_increment.call(counter, add(2, 3)); \
@@ -122,7 +138,7 @@ int main()
     }
 
     crude::Value result;
-    if (runtime.evaluate(&result, context, script)) {
+    if (runtime.evaluate(std::cerr, &result, context, script)) {
         return 1;
     }
 
