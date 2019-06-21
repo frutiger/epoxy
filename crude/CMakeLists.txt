@@ -2,6 +2,8 @@ add_library(
     crude
     crude_assert.cpp
     crude_context.cpp
+    crude_convert.cpp
+    crude_exchanger.cpp
     crude_runtime.cpp
     crude_valueutil.cpp
     crude_wrapper.cpp

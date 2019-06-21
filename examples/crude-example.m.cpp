@@ -1,6 +1,7 @@
 // crude-example.m.cpp
 
 #include <crude_context.h>
+#include <crude_convert.h>
 #include <crude_runtime.h>
 #include <crude_valueutil.h>
 #include <crude_wrapper.h>
@@ -8,54 +9,80 @@
 #include <iostream>
 #include <sstream>
 
-static crude::Value addF(const crude::Runtime& runtime,
-                         const crude::Object&,
-                         const crude::Value&,
-                         const crude::Values&  arguments)
+static int addF(crude::Value          *result,
+                const crude::Runtime&  runtime,
+                const crude::Context&  context,
+                const crude::Object&,
+                const crude::Value&,
+                const crude::Values&   arguments)
 {
     auto *isolate = runtime.isolate();
     v8::HandleScope handles(isolate);
 
-    auto context = isolate->GetCurrentContext();
+    int a;
+    if (crude::Convert::to(&a, runtime, context, arguments[0])) {
+        return -1;
+    }
 
-    auto a = arguments[0].Get(isolate)->ToNumber(context).ToLocalChecked();
-    auto b = arguments[1].Get(isolate)->ToNumber(context).ToLocalChecked();
-    return crude::Value(isolate, v8::Number::New(isolate,
-                                                 a->Value() + b->Value()));
+    int b;
+    if (crude::Convert::to(&b, runtime, context, arguments[1])) {
+        return -1;
+    }
+
+    if (crude::Convert::from(result, runtime, context, a + b)) {
+        return -1;
+    }
+    return 0;
 }
 
 class Counter : public crude::Wrapper {
     int d_value = 0;
 
   public:
-    static crude::Value increment(const crude::Runtime& runtime,
-                                  const crude::Object&  receiver,
-                                  const crude::Value&,
-                                  const crude::Values&  arguments)
+    static int increment(crude::Value          *result,
+                         const crude::Runtime&  runtime,
+                         const crude::Context&  context,
+                         const crude::Object&   receiver,
+                         const crude::Value&,
+                         const crude::Values&   arguments)
     {
         auto *isolate = runtime.isolate();
         v8::HandleScope handles(isolate);
 
-        auto context = isolate->GetCurrentContext();
+        int x;
+        if (crude::Convert::to(&x, runtime, context, arguments[0])) {
+            return -1;
+        }
 
-        auto x = arguments[0].Get(isolate)->ToNumber(context).ToLocalChecked();
+        Counter *self = nullptr;
+        if (crude::Convert::to(&self, runtime, context, receiver)) {
+            return -1;
+        }
 
-        auto *self = static_cast<Counter *>(runtime.unwrap(receiver));
-        self->d_value += x->Value();
+        self->d_value += x;
 
-        return crude::Value(isolate, v8::Undefined(isolate));
+        *result = crude::Value(isolate, v8::Undefined(isolate));
+        return 0;
     }
 
-    static crude::Value get(const crude::Runtime& runtime,
-                            const crude::Object&  receiver,
-                            const crude::Value&,
-                            const crude::Values&)
+    static int get(crude::Value          *result,
+                   const crude::Runtime&  runtime,
+                   const crude::Context&  context,
+                   const crude::Object&   receiver,
+                   const crude::Value&,
+                   const crude::Values&)
     {
         auto *isolate = runtime.isolate();
         v8::HandleScope handles(isolate);
 
-        auto *self = static_cast<Counter *>(runtime.unwrap(receiver));
-        return crude::Value(isolate, v8::Number::New(isolate, self->d_value));
+        Counter *self = nullptr;
+        if (crude::Convert::to(&self, runtime, context, receiver)) {
+            return -1;
+        }
+
+        *result = crude::Value(isolate,
+                               v8::Number::New(isolate, self->d_value));
+        return 0;
     }
 
     void hosted(const crude::Object&) override

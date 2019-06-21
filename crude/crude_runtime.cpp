@@ -2,6 +2,7 @@
 #include <crude_runtime.h>
 
 #include <crude_assert.h>
+#include <crude_convert.h>
 #include <crude_context.h>
 #include <crude_wrapper.h>
 
@@ -36,13 +37,27 @@ void Runtime::callback(const v8::FunctionCallbackInfo<v8::Value>& info)
         arguments.push_back(Value(isolate, info[i]));
     }
 
-    Object receiver(isolate, info.This());
-    Value  target(isolate, info.NewTarget());
+    Context context(isolate, isolate->GetCurrentContext());
+    Object  receiver(isolate, info.This());
+    Value   target(isolate, info.NewTarget());
 
-    info.GetReturnValue().Set(data->d_function(*runtime,
-                                               receiver,
-                                               target,
-                                               arguments));
+    crude::Value result;
+    if (data->d_function(&result,
+                         *runtime,
+                         context,
+                         receiver,
+                         target,
+                         arguments)) {
+        Value error;
+        if (Convert::from(&error,
+                          *runtime,
+                          Context(isolate, isolate->GetCurrentContext()),
+                          "Type Error: failed to invoke function")) {
+            return;
+        }
+        isolate->ThrowException(error.Get(isolate));
+    }
+    info.GetReturnValue().Set(result);
 }
 
 Runtime::Runtime()
@@ -83,27 +98,22 @@ int Runtime::compile(Script                  *result,
 {
     v8::HandleScope handles(d_isolate_p);
 
-    auto nameString = v8::String::NewFromUtf8(d_isolate_p,
-                                              name.begin(),
-                                              v8::NewStringType::kNormal,
-                                              name.length());
-    if (nameString.IsEmpty()) {
+    Value nameValue;
+    if (Convert::from(&nameValue, *this, context, name)) {
         return -1;
     }
 
-    v8::ScriptOrigin origin (nameString.ToLocalChecked());
-
-    auto textString = v8::String::NewFromUtf8(d_isolate_p,
-                                              text.begin(),
-                                              v8::NewStringType::kNormal,
-                                              text.length());
-    if (textString.IsEmpty()) {
+    Value textValue;
+    if (Convert::from(&textValue, *this, context, text)) {
         return -1;
     }
 
+    auto textString = textValue.Get(d_isolate_p)
+                               ->ToString(context.local())
+                               .ToLocalChecked();
 
-    auto source = v8::ScriptCompiler::Source(textString.ToLocalChecked(),
-                                             origin);
+    v8::ScriptOrigin origin(nameValue.Get(d_isolate_p));
+    auto source = v8::ScriptCompiler::Source(textString, origin);
 
     v8::MaybeLocal<v8::UnboundScript> maybeScript;
     {
