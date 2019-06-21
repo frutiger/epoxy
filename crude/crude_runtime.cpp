@@ -1,6 +1,7 @@
 // crude_runtime.cpp
 #include <crude_runtime.h>
 
+#include <crude_assert.h>
 #include <crude_context.h>
 #include <crude_wrapper.h>
 
@@ -23,16 +24,12 @@ void Runtime::callback(const v8::FunctionCallbackInfo<v8::Value>& info)
     auto *isolate = info.GetIsolate();
     v8::HandleScope handles(isolate);
 
-    if (!info.Data()->IsExternal()) {
-        std::abort();
-    }
+    CRUDE_ASSERT(info.Data()->IsExternal());
     auto  dataExternal = v8::External::Cast(*info.Data());
     auto *data         = static_cast<FunctionData *>(dataExternal->Value());
 
     auto *runtime = data->d_runtime_p;
-    if (runtime->isolate() != isolate) {
-        std::abort();
-    }
+    CRUDE_ASSERT(runtime->isolate() == isolate);
 
     Values arguments;
     for (int i = 0; i < info.Length(); ++i) {
@@ -201,9 +198,7 @@ Wrapper *Runtime::unwrap(const Object& object) const
 
     auto wrapper = localObject->Get(localObject->CreationContext(), key)
                                 .ToLocalChecked();
-    if (!wrapper->IsExternal()) {
-        std::abort();
-    }
+    CRUDE_ASSERT(wrapper->IsExternal());
     auto external = v8::External::Cast(*wrapper);
     return static_cast<Wrapper *>(external->Value());
 }

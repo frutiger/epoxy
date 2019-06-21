@@ -1,5 +1,6 @@
 add_library(
     crude
+    crude_assert.cpp
     crude_context.cpp
     crude_runtime.cpp
     crude_valueutil.cpp
