@@ -29,6 +29,10 @@ std::ostream& ValueUtil::print(std::ostream&                  stream,
                                const v8::Local<v8::Value>&    value,
                                unsigned int                   indentation)
 {
+    if (value->IsUndefined()) {
+        return stream << "undefined";
+    }
+
     if (value->IsNull()) {
         return stream << "null";
     }
