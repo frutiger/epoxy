@@ -105,10 +105,12 @@ int Runtime::compile(Script                  *result,
     auto source = v8::ScriptCompiler::Source(textString.ToLocalChecked(),
                                              origin);
 
-    context.local()->Enter();
-    auto maybeScript = v8::ScriptCompiler::CompileUnboundScript(d_isolate_p,
-                                                                &source);
-    context.local()->Exit();
+    v8::MaybeLocal<v8::UnboundScript> maybeScript;
+    {
+        v8::Context::Scope scope(context.local());
+        maybeScript = v8::ScriptCompiler::CompileUnboundScript(d_isolate_p,
+                                                               &source);
+    }
 
     if (maybeScript.IsEmpty()) {
         return -1;
@@ -122,10 +124,13 @@ int Runtime::evaluate(Value          *result,
                       const Script&   script)
 {
     v8::HandleScope handles(d_isolate_p);
-    context.local()->Enter();
-    auto local = script.Get(d_isolate_p)->BindToCurrentContext();
-    auto maybeResult = local->Run(context.local());
-    context.local()->Exit();
+
+    v8::MaybeLocal<v8::Value> maybeResult;
+    {
+        v8::Context::Scope scope(context.local());
+        auto local  = script.Get(d_isolate_p)->BindToCurrentContext();
+        maybeResult = local->Run(context.local());
+    }
 
     if (maybeResult.IsEmpty()) {
         return -1;
@@ -163,10 +168,11 @@ Object Runtime::wrap(const crude::Context&      context,
 {
     v8::HandleScope handles(d_isolate_p);
 
-    context.local()->Enter();
-    auto object = v8::Object::New(d_isolate_p);
-    auto result = Object(d_isolate_p, object);
-    context.local()->Exit();
+    Object result;
+    {
+        v8::Context::Scope scope(context.local());
+        result = Object(d_isolate_p, v8::Object::New(d_isolate_p));
+    }
     wrapper->hosted(result);
 
     auto *rawWrapper = wrapper.release();
@@ -176,11 +182,13 @@ Object Runtime::wrap(const crude::Context&      context,
                    },
                    v8::WeakCallbackType::kParameter);
 
-    context.local()->Enter();
-    object->Set(object->CreationContext(),
-                d_wrapKey.Get(d_isolate_p),
-                v8::External::New(d_isolate_p, rawWrapper)).Check();
-    context.local()->Exit();
+    {
+        v8::Context::Scope scope(context.local());
+        auto object = result.Get(d_isolate_p);
+        object->Set(object->CreationContext(),
+                    d_wrapKey.Get(d_isolate_p),
+                    v8::External::New(d_isolate_p, rawWrapper)).Check();
+    }
     return result;
 }
 
