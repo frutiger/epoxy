@@ -1,7 +1,9 @@
 # epoxy
 
 A suite of idiomatic, cross-platform, zero-cost C++17 libraries to bind to
-embedder APIs for modern dynamically typed runtimes.
+embedder APIs for modern dynamically typed runtimes.  The suite also includes
+`epoxy`, a library of helper facilities that ease the burden of writing
+converters, adapters and marshallers for using these runtimes.
 
 Each library has a corresponding program indicating idiomatic usage in the
 `examples` directory that reads a program from standard input and prints the

@@ -16,5 +16,6 @@ target_compile_options(
 target_link_libraries(
     crude-example
     crude
+    epoxy
 )
 
