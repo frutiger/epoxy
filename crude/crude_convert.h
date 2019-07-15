@@ -35,6 +35,11 @@ struct Convert
                   const Context&     context,
                   const Value&       source);
     static int to(std::ostream&      errorStream,
+                  double            *destination,
+                  const Exchanger&   exchanger,
+                  const Context&     context,
+                  const Value&       source);
+    static int to(std::ostream&      errorStream,
                   std::string       *destination,
                   const Exchanger&   exchanger,
                   const Context&     context,
@@ -45,6 +50,11 @@ struct Convert
                     const Exchanger&         exchanger,
                     const Context&           context,
                     int                      source);
+    static int from(std::ostream&            errorStream,
+                    Value                   *destination,
+                    const Exchanger&         exchanger,
+                    const Context&           context,
+                    double                   source);
     static int from(std::ostream&            errorStream,
                     Value                   *destination,
                     const Exchanger&         exchanger,

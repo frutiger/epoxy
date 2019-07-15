@@ -30,6 +30,29 @@ int Convert::to(std::ostream&     errorStream,
 }
 
 int Convert::to(std::ostream&     errorStream,
+                double           *destination,
+                const Exchanger&  exchanger,
+                const Context&    context,
+                const Value&      source)
+{
+    auto *isolate = exchanger.isolate();
+    v8::HandleScope handles(isolate);
+
+    v8::MaybeLocal<v8::Number> maybeNumber;
+    {
+        v8::Context::Scope scope(context.local());
+        maybeNumber = source.Get(isolate)->ToNumber(context.local());
+    }
+    if (maybeNumber.IsEmpty()) {
+        errorStream << "Type Error: expected double";
+        return -1;
+    }
+
+    *destination = maybeNumber.ToLocalChecked()->Value();
+    return 0;
+}
+
+int Convert::to(std::ostream&     errorStream,
                 std::string      *destination,
                 const Exchanger&  exchanger,
                 const Context&    context,
@@ -66,6 +89,22 @@ int Convert::from(std::ostream&,
     {
         v8::Context::Scope scope(context.local());
         *destination = Value(isolate, v8::Int32::New(isolate, source));
+    }
+    return 0;
+}
+
+int Convert::from(std::ostream&,
+                  Value            *destination,
+                  const Exchanger&  exchanger,
+                  const Context&    context,
+                  double            source)
+{
+    auto *isolate = exchanger.isolate();
+    v8::HandleScope handles(isolate);
+
+    {
+        v8::Context::Scope scope(context.local());
+        *destination = Value(isolate, v8::Number::New(isolate, source));
     }
     return 0;
 }
