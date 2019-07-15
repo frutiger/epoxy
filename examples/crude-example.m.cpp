@@ -43,10 +43,6 @@ class Counter : public crude::Wrapper {
     {
         return d_value;
     }
-
-    void hosted(const crude::Object&) override
-    {
-    }
 };
 
 int main()

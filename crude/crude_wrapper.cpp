@@ -7,5 +7,9 @@ Wrapper::~Wrapper()
 {
 }
 
+void Wrapper::hosted(const Object&)
+{
+}
+
 }
 

@@ -12,7 +12,7 @@ class Wrapper {
   public:
     virtual ~Wrapper();
 
-    virtual void hosted(const Object& object) = 0;
+    virtual void hosted(const Object& object);
 };
 
 }
