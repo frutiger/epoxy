@@ -54,6 +54,12 @@ struct Adapter_FunctionTraits<RESULT (RECEIVER::*)(Error&, ARGS...)>
     using takes_error     = std::false_type;
 };
 
+template <class CLASS, class... ARGS>
+struct Adapter_ConstructorTraits;
+{
+    static_assert(std::is_constructible_v<CLASS, ARGS...>);
+};
+
 template <class CONVERTER,
           class EXCHANGER,
           class CONTEXT,
@@ -120,19 +126,19 @@ template <class TRAITS,
           class RECEIVER,
           class RESULT,
           class TAKES_ERROR>
-struct Adapter_Helper;
+struct Adapter_Function;
 
 template <class TRAITS,
           class DESTINATION,
           class CONVERTER,
           class RECEIVER,
           class RESULT>
-struct Adapter_Helper<TRAITS,
-                      DESTINATION,
-                      CONVERTER,
-                      RECEIVER,
-                      RESULT,
-                      std::true_type>
+struct Adapter_Function<TRAITS,
+                        DESTINATION,
+                        CONVERTER,
+                        RECEIVER,
+                        RESULT,
+                        std::true_type>
 {
     static DESTINATION adapt(const typename TRAITS::function& source)
     {
@@ -212,12 +218,12 @@ template <class TRAITS,
           class CONVERTER,
           class RECEIVER,
           class RESULT>
-struct Adapter_Helper<TRAITS,
-                      DESTINATION,
-                      CONVERTER,
-                      RECEIVER,
-                      RESULT,
-                      std::false_type>
+struct Adapter_Function<TRAITS,
+                        DESTINATION,
+                        CONVERTER,
+                        RECEIVER,
+                        RESULT,
+                        std::false_type>
 {
     static DESTINATION adapt(const typename TRAITS::function& source)
     {
@@ -284,12 +290,12 @@ template <class TRAITS,
           class DESTINATION,
           class CONVERTER,
           class RECEIVER>
-struct Adapter_Helper<TRAITS,
-                      DESTINATION,
-                      CONVERTER,
-                      RECEIVER,
-                      void,
-                      std::true_type>
+struct Adapter_Function<TRAITS,
+                        DESTINATION,
+                        CONVERTER,
+                        RECEIVER,
+                        void,
+                        std::true_type>
 {
     static DESTINATION adapt(const typename TRAITS::function& source)
     {
@@ -360,12 +366,12 @@ template <class TRAITS,
           class DESTINATION,
           class CONVERTER,
           class RECEIVER>
-struct Adapter_Helper<TRAITS,
-                      DESTINATION,
-                      CONVERTER,
-                      RECEIVER,
-                      void,
-                      std::false_type>
+struct Adapter_Function<TRAITS,
+                        DESTINATION,
+                        CONVERTER,
+                        RECEIVER,
+                        void,
+                        std::false_type>
 {
     static DESTINATION adapt(const typename TRAITS::function& source)
     {
@@ -426,12 +432,12 @@ template <class TRAITS,
           class DESTINATION,
           class CONVERTER,
           class RESULT>
-struct Adapter_Helper<TRAITS,
-                      DESTINATION,
-                      CONVERTER,
-                      void,
-                      RESULT,
-                      std::true_type>
+struct Adapter_Function<TRAITS,
+                        DESTINATION,
+                        CONVERTER,
+                        void,
+                        RESULT,
+                        std::true_type>
 {
     static DESTINATION adapt(const typename TRAITS::function& source)
     {
@@ -499,12 +505,12 @@ template <class TRAITS,
           class DESTINATION,
           class CONVERTER,
           class RESULT>
-struct Adapter_Helper<TRAITS,
-                      DESTINATION,
-                      CONVERTER,
-                      void,
-                      RESULT,
-                      std::false_type>
+struct Adapter_Function<TRAITS,
+                        DESTINATION,
+                        CONVERTER,
+                        void,
+                        RESULT,
+                        std::false_type>
 {
     static DESTINATION adapt(const typename TRAITS::function& source)
     {
@@ -558,12 +564,12 @@ struct Adapter_Helper<TRAITS,
 };
 
 template <class TRAITS, class DESTINATION, class CONVERTER>
-struct Adapter_Helper<TRAITS,
-                      DESTINATION,
-                      CONVERTER,
-                      void,
-                      void,
-                      std::true_type>
+struct Adapter_Function<TRAITS,
+                        DESTINATION,
+                        CONVERTER,
+                        void,
+                        void,
+                        std::true_type>
 {
     static DESTINATION adapt(const typename TRAITS::function& source)
     {
@@ -618,12 +624,12 @@ struct Adapter_Helper<TRAITS,
 };
 
 template <class TRAITS, class DESTINATION, class CONVERTER>
-struct Adapter_Helper<TRAITS,
-                      DESTINATION,
-                      CONVERTER,
-                      void,
-                      void,
-                      std::false_type>
+struct Adapter_Function<TRAITS,
+                        DESTINATION,
+                        CONVERTER,
+                        void,
+                        void,
+                        std::false_type>
 {
     static DESTINATION adapt(const typename TRAITS::function& source)
     {
@@ -674,13 +680,18 @@ struct Adapter
     static DESTINATION adapt(const SOURCE& source)
     {
         using Traits = Adapter_FunctionTraits<SOURCE>;
-        using Helper = Adapter_Helper<Traits,
-                                      DESTINATION,
-                                      CONVERTER,
-                                      typename Traits::receiver_type,
-                                      typename Traits::result_type,
-                                      typename Traits::takes_error>;
+        using Helper = Adapter_Function<Traits,
+                                        DESTINATION,
+                                        CONVERTER,
+                                        typename Traits::receiver_type,
+                                        typename Traits::result_type,
+                                        typename Traits::takes_error>;
         return Helper::adapt(source);
+    }
+
+    template <class C>
+    static DESTINATION adapt()
+    {
     }
 };
 

@@ -34,6 +34,23 @@ class Counter : public crude::Wrapper {
     int d_value = 0;
 
   public:
+    static int construct(std::ostream&,
+                         crude::Value          *result,
+                         const crude::Runtime&  runtime,
+                         const crude::Context&  context,
+                         const crude::Object&,
+                         const crude::Value&,
+                         const crude::Values&)
+    {
+        auto *isolate = runtime.isolate();
+        v8::HandleScope handles(isolate);
+
+        auto object = runtime.wrap(context, std::make_unique<Counter>());
+        *result = crude::Value(isolate,
+                               v8::Local<v8::Value>(object.Get(isolate)));
+        return 0;
+    }
+
     void increment(int x)
     {
         d_value += x;
@@ -47,38 +64,42 @@ class Counter : public crude::Wrapper {
 
 int main()
 {
-    crude::Runtime runtime;
+    using namespace crude;
+    using Adapter = epoxy::Adapter<Runtime::Signature, Convert>;
+
+    Runtime runtime;
 
     auto context = runtime.createContext();
 
-    using Adapter = epoxy::Adapter<crude::Runtime::Signature, crude::Convert>;
-
-    crude::Object print;
+    Object print;
     runtime.host(&print, context, Adapter::adapt(&printF));
     context.set("print", print);
 
-    crude::Object add;
+    Object add;
     runtime.host(&add, context, Adapter::adapt(&addF));
     context.set("add", add);
 
-    crude::Object squareRoot;
+    Object squareRoot;
     runtime.host(&squareRoot, context, Adapter::adapt(&squareRootF));
     context.set("squareRoot", squareRoot);
 
-    crude::Object Counter_increment;
+    Object Counter_construct;
+    runtime.host(&Counter_construct,
+                 context,
+                 &Counter::construct);
+    context.set("Counter_construct", Counter_construct);
+
+    Object Counter_increment;
     runtime.host(&Counter_increment,
                  context,
                  Adapter::adapt(&Counter::increment));
     context.set("Counter_increment", Counter_increment);
 
-    crude::Object Counter_get;
+    Object Counter_get;
     runtime.host(&Counter_get, context, Adapter::adapt(&Counter::get));
     context.set("Counter_get", Counter_get);
 
-    auto counter = runtime.wrap(context, std::make_unique<Counter>());
-    context.set("counter", counter);
-
-    crude::Script script;
+    Script script;
     if (runtime.compile(std::cerr,
                         &script,
                         context,
@@ -89,19 +110,20 @@ int main()
                         "catch (e) {\n"
                         "    print(e.stack + '\\n');\n"
                         "}\n"
+                        "let counter = Counter_construct();\n"
                         "Counter_increment.call(counter, add(squareRoot(4), 3));\n"
                         "Counter_increment.call(counter, 20);\n"
                         "Counter_get.call(counter);")) {
         return 1;
     }
 
-    crude::Value result;
+    Value result;
     if (runtime.evaluate(std::cerr, &result, context, script)) {
         return 1;
     }
 
     std::ostringstream output;
-    crude::ValueUtil::print(output, runtime, context, result) << '\n';
+    ValueUtil::print(output, runtime, context, result) << '\n';
 
     assert(output.str() == "25\n");
 

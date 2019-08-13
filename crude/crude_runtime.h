@@ -55,7 +55,8 @@ class Runtime : public Exchanger
     int host(Object           *result,
              const Context&    context,
              const Signature&  function);
-    Object wrap(const Context& context, std::unique_ptr<Wrapper>&& wrapper);
+
+    Object wrap(const Context& context, std::unique_ptr<Wrapper>&& wrapper) const;
     Wrapper *unwrap(const Object& object) const override;
 
     v8::Isolate *isolate() const override;

@@ -203,7 +203,7 @@ int Runtime::host(Object           *result,
 }
 
 Object Runtime::wrap(const crude::Context&      context,
-                     std::unique_ptr<Wrapper>&& wrapper)
+                     std::unique_ptr<Wrapper>&& wrapper) const
 {
     v8::HandleScope handles(d_isolate_p);
 
